@@ -1,0 +1,188 @@
+section .data
+fs_usage:
+	db "Call with single, positive, odd number", 10, 0
+fs_malloc_failed:
+	db "A call to malloc() failed", 10, 0
+fs_long:
+	db "%*ld", 0
+fs_newline:
+	db 10, 0
+
+section .bss
+argv: resq 1
+n: resq 1
+n2: resq 1
+a: resq 1
+b: resq 1
+table: resq 1
+width: resq 1
+
+extern printf, atoi, calloc
+global main
+section .text
+main:
+	enter 0, 0
+	finit
+
+	mov qword [argv], rsi
+
+	cmp rdi, 2		; argc
+	jne .error
+
+	mov rdi, qword [argv]
+	mov rdi, qword [rdi + 8*1] ; argv[1]
+	call atoi
+	cmp rax, 2
+	jle .error
+
+	test rax, 1
+	jz .error
+
+	mov qword [n], rax
+
+	mov rdi, rax
+	mov rsi, 8
+	call calloc
+	cmp rax, 0
+	je .malloc_failed
+
+	mov qword [table], rax
+	
+	mov rdx, rax
+	mov rax, 0
+	mov rbx, qword [n]
+.allocate_table:
+	cmp rax, rbx
+	je .fill_table
+
+	mov rdi, rbx
+	mov rsi, 8
+	push rax
+	push rbx
+	push rdx
+	call calloc
+	pop rdx
+	mov qword [rdx], rax
+	pop rbx
+	pop rax
+	add rdx, 8
+	add rax, 1
+	jmp .allocate_table
+
+.fill_table:
+	mov rbx, 0		; a = 0
+	mov r9, qword [n]	; n
+	mov rcx, r9		; 
+	shr rcx, 1		; b = n / 2
+	mov r8, 1		; i
+	mov rax, r9
+	cdq
+	mul rax
+	mov r10, rax		; n^2
+
+.fill_table_loop:
+	cmp r8, r10
+	jg .fill_table_done
+
+	mov rdi, qword [table]
+	mov rdi, qword [rdi + 8 * rbx]
+	mov qword [rdi + 8 * rcx], r8
+	inc r8
+	
+	lea rax, [rbx + r9 - 1]
+	cdq
+	div r9
+	mov rbx, rdx
+
+	lea rax, [rcx + 1]
+	cdq
+	div r9
+	mov rcx, rdx
+
+	mov rdi, qword [table]
+	mov rdi, qword [rdi + 8 * rbx]
+	cmp qword [rdi + 8 * rcx], 0
+	je .fill_table_loop
+
+	lea rax, [rbx + 2]
+	cdq
+	div r9
+	mov rbx, rdx
+
+	lea rax, [rcx + r9 - 1]
+	cdq
+	div r9
+	mov rcx, rdx
+	jmp .fill_table_loop
+
+.fill_table_done:
+	fild qword [n]
+	fld st0
+	fmulp
+	fxtract
+	fld1
+	fxch
+	fyl2x
+	faddp
+	fldl2t
+	fdivp
+	jmp .continue_voodoo
+	
+.voodoo:
+	dq 1.5
+	
+.continue_voodoo:
+	fld qword [.voodoo]
+	faddp
+	fistp qword [width]
+
+	mov rbx, 0
+
+.outer_loop:
+	cmp rbx, qword [n]
+	je .end
+
+	mov rcx, 0
+
+.inner_loop:
+	cmp rcx, qword [n]
+	je .end_inner_loop
+
+	mov rdi, fs_long
+	mov rsi, qword [width]
+	mov rdx, qword [table]
+	mov rdx, qword [rdx + 8 * rbx]
+	mov rdx, qword [rdx + 8 * rcx]
+	mov rax, 0
+	push rbx
+	push rcx
+	call printf
+	pop rcx
+	pop rbx
+	inc rcx
+	jmp .inner_loop
+
+.end_inner_loop:
+	mov rdi, fs_newline
+	mov rax, 0
+	push rbx
+	call printf
+	pop rbx
+	inc rbx
+	jmp .outer_loop
+
+.error:
+	mov rdi, fs_usage
+	mov rax, 0
+	call printf
+	jmp .end
+
+.malloc_failed:
+	mov rdi, fs_malloc_failed
+	mov rax, 0
+	call printf
+
+.end:
+	leave
+	ret
+
