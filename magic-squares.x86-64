@@ -1,14 +1,11 @@
 section .data
-fs_usage:
-	db "Call with single, positive, odd number", 10, 0
-fs_malloc_failed:
-	db "A call to malloc() failed", 10, 0
-fs_long:
-	db "%*ld", 0
-fs_newline:
-	db 10, 0
+fs_usage: db "Call with single, positive, odd number", 10, 0
+fs_malloc_failed: db "A call to malloc() failed", 10, 0
+fs_long: db "%*ld", 0
+fs_newline: db 10, 0
 
 section .bss
+
 argv: resq 1
 n: resq 1
 n2: resq 1
@@ -18,8 +15,11 @@ table: resq 1
 width: resq 1
 
 extern printf, atoi, calloc
+
 global main
+
 section .text
+
 main:
 	enter 0, 0
 	finit
@@ -51,6 +51,7 @@ main:
 	mov rdx, rax
 	mov rax, 0
 	mov rbx, qword [n]
+	
 .allocate_table:
 	cmp rax, rbx
 	je .fill_table
